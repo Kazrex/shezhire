@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+  <meta charset="UTF-8">
+  <title>Қазақ Шежіре Ағашы</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      padding: 20px;
+      background: #f4f9fc;
+      color: #2c3e50;
+    }
+
+    h2 {
+      text-align: center;
+      color: #1a5276;
+      margin-bottom: 30px;
+    }
+
+    #form {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    label {
+      width: 100%;
+      max-width: 400px;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
+    input, select, button {
+      width: 100%;
+      max-width: 400px;
+      padding: 10px 12px;
+      border-radius: 6px;
+      border: 1px solid #bbb;
+      font-size: 16px;
+    }
+
+    button {
+      background-color: #1a5276;
+      color: white;
+      border: none;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    button:hover {
+      background-color: #154360;
+    }
+
+    #buttons {
+      text-align: center;
+      margin: 20px;
+    }
+
+    .tree {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .node {
+      text-align: center;
+      padding: 10px 15px;
+      border: 2px solid #1a5276;
+      background: #d6eaf8;
+      border-radius: 12px;
+      box-shadow: 2px 2px 6px rgba(0,0,0,0.1);
+      margin: 10px auto;
+      position: relative;
+      font-weight: bold;
+      min-width: 120px;
+      cursor: pointer;
+    }
+
+    .node small {
+      display: block;
+      font-weight: normal;
+      color: #34495e;
+      margin-top: 4px;
+    }
+
+    .children {
+      display: flex;
+      justify-content: center;
+      position: relative;
+      margin-top: 20px;
+    }
+
+    .line-down {
+      width: 2px;
+      height: 20px;
+      background: #1a5276;
+      position: absolute;
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .children::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: #1a5276;
+    }
+
+    .child {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0 25px;
+    }
+
+    /* Modal-style edit form */
+    #editModal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #editForm {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #00000055;
+      max-width: 400px;
+      width: 90%;
+    }
+
+    #editForm h3 {
+      margin-top: 0;
+      text-align: center;
+    }
+
+    #editForm input {
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>🧬 Қазақ Шежіре Ағашы</h2>
+
+<div id="form">
+  <label for="name">Адамның аты:</label>
+  <input type="text" id="name" placeholder="Мысалы: Өтеген">
+
+  <label for="info">Қосымша мәлімет:</label>
+  <input type="text" id="info" placeholder="Мысалы: 1930–1999, батыр, т.б.">
+
+  <label for="relationType">Байланыс түрі:</label>
+  <select id="relationType">
+    <option value="child">Бала ретінде</option>
+    <option value="parent">Әке ретінде</option>
+  </select>
+
+  <label for="relatedTo">Кіммен байланысады:</label>
+  <select id="relatedTo">
+    <option value="">Таңдаңыз</option>
+  </select>
+
+  <button onclick="addPerson()">Қосу</button>
+</div>
+
+<div id="buttons">
+  <button onclick="downloadPDF()">📥 PDF жүктеу</button>
+</div>
+
+<div id="tree-container" class="tree"></div>
+
+<!-- Түзету формасы -->
+<div id="editModal">
+  <div id="editForm">
+    <h3>Түзету</h3>
+    <input type="text" id="editName" placeholder="Аты">
+    <input type="text" id="editInfo" placeholder="Қосымша мәлімет">
+    <button onclick="saveEdit()">Сақтау</button>
+  </div>
+</div>
+
+<script>
+  const people = [];
+  let id = 0;
+  let editingId = null;
+
+  function addPerson() {
+    const name = document.getElementById("name").value.trim();
+    const info = document.getElementById("info").value.trim();
+    const relation = document.getElementById("relationType").value;
+    const relatedId = document.getElementById("relatedTo").value;
+
+    if (!name) return alert("Адамның атын енгізіңіз!");
+
+    const person = { id: id++, name, info, parent: null };
+
+    if (relation === "child" && relatedId) {
+      person.parent = relatedId;
+    }
+
+    people.push(person);
+
+    if (relation === "parent" && relatedId) {
+      const related = people.find(p => p.id == relatedId);
+      if (related) related.parent = person.id;
+    }
+
+    document.getElementById("name").value = "";
+    document.getElementById("info").value = "";
+
+    updateSelectOptions();
+    renderTree();
+  }
+
+  function updateSelectOptions() {
+    const relatedTo = document.getElementById("relatedTo");
+    relatedTo.innerHTML = '<option value="">Таңдаңыз</option>';
+    for (const p of people) {
+      const opt = document.createElement("option");
+      opt.value = p.id;
+      opt.textContent = p.name;
+      relatedTo.appendChild(opt);
+    }
+  }
+
+  function renderTree() {
+    const container = document.getElementById("tree-container");
+    container.innerHTML = "";
+    const roots = people.filter(p => p.parent === null);
+    for (const root of roots) {
+      const node = renderNode(root);
+      container.appendChild(node);
+    }
+  }
+
+  function renderNode(person) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "child";
+
+    const line = document.createElement("div");
+    line.className = "line-down";
+    wrapper.appendChild(line);
+
+    const div = document.createElement("div");
+    div.className = "node";
+    div.textContent = person.name;
+    div.onclick = () => openEditModal(person.id);
+
+    if (person.info) {
+      const small = document.createElement("small");
+      small.textContent = person.info;
+      div.appendChild(small);
+    }
+
+    wrapper.appendChild(div);
+
+    const children = people.filter(p => p.parent == person.id);
+    if (children.length > 0) {
+      const childrenDiv = document.createElement("div");
+      childrenDiv.className = "children";
+      for (const child of children) {
+        childrenDiv.appendChild(renderNode(child));
+      }
+      wrapper.appendChild(childrenDiv);
+    }
+
+    return wrapper;
+  }
+
+  function downloadPDF() {
+    const tree = document.getElementById("tree-container");
+    const opt = {
+      margin:       0.5,
+      filename:     'shezhire.pdf',
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2 },
+      jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+    };
+    html2pdf().from(tree).set(opt).save();
+  }
+
+  function openEditModal(id) {
+    const person = people.find(p => p.id === id);
+    if (!person) return;
+
+    editingId = id;
+    document.getElementById("editName").value = person.name;
+    document.getElementById("editInfo").value = person.info || "";
+
+    document.getElementById("editModal").style.display = "flex";
+  }
+
+  function saveEdit() {
+    const name = document.getElementById("editName").value.trim();
+    const info = document.getElementById("editInfo").value.trim();
+
+    const person = people.find(p => p.id === editingId);
+    if (!person) return;
+
+    person.name = name || person.name;
+    person.info = info;
+
+    document.getElementById("editModal").style.display = "none";
+    renderTree();
+    updateSelectOptions();
+  }
+
+  // Жабу үшін сыртынан басса
+  document.getElementById("editModal").onclick = e => {
+    if (e.target.id === "editModal") {
+      document.getElementById("editModal").style.display = "none";
+    }
+  };
+</script>
+
+</body>
+</html>
