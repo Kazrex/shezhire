@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Қазақ Шежіре Ағашы</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
     body {
       font-family: "Segoe UI", sans-serif;
@@ -121,7 +121,6 @@
       margin: 0 25px;
     }
 
-    /* Modal-style edit form */
     #editModal {
       position: fixed;
       top: 0;
@@ -180,11 +179,11 @@
 
 <div id="buttons">
   <button onclick="downloadPDF()">📥 PDF жүктеу</button>
+  <button onclick="clearData()">🗑️ Бәрін өшіру</button>
 </div>
 
 <div id="tree-container" class="tree"></div>
 
-<!-- Түзету формасы -->
 <div id="editModal">
   <div id="editForm">
     <h3>Түзету</h3>
@@ -195,9 +194,21 @@
 </div>
 
 <script>
-  const people = [];
+  let people = [];
   let id = 0;
   let editingId = null;
+
+  window.onload = function () {
+    const saved = localStorage.getItem("shezhireData");
+    if (saved) {
+      people = JSON.parse(saved);
+      if (people.length > 0) {
+        id = Math.max(...people.map(p => p.id)) + 1;
+      }
+      renderTree();
+      updateSelectOptions();
+    }
+  };
 
   function addPerson() {
     const name = document.getElementById("name").value.trim();
@@ -219,6 +230,8 @@
       const related = people.find(p => p.id == relatedId);
       if (related) related.parent = person.id;
     }
+
+    localStorage.setItem("shezhireData", JSON.stringify(people));
 
     document.getElementById("name").value = "";
     document.getElementById("info").value = "";
@@ -315,12 +328,20 @@
     person.name = name || person.name;
     person.info = info;
 
+    localStorage.setItem("shezhireData", JSON.stringify(people));
+
     document.getElementById("editModal").style.display = "none";
     renderTree();
     updateSelectOptions();
   }
 
-  // Жабу үшін сыртынан басса
+  function clearData() {
+    if (confirm("Барлық шежіре өшірілсін бе?")) {
+      localStorage.removeItem("shezhireData");
+      location.reload();
+    }
+  }
+
   document.getElementById("editModal").onclick = e => {
     if (e.target.id === "editModal") {
       document.getElementById("editModal").style.display = "none";
